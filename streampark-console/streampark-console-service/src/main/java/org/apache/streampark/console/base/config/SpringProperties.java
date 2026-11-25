@@ -64,10 +64,11 @@ public final class SpringProperties {
     }
 
     private static void dataSourceConfig(Properties userConfig, Properties springConfig) {
-        String dialect = userConfig.getProperty("datasource.dialect", "");
+        String dialect = userConfig.getProperty("datasource.dialect", "").trim();
         if (StringUtils.isBlank(dialect)) {
             throw new ExceptionInInitializerError(
-                "datasource.dialect is required, please check config.yaml");
+                "datasource.dialect is required, please check config.yaml, "
+                    + "supported values are: mysql, pgsql, h2");
         }
         switch (dialect.toLowerCase()) {
             case "mysql":
@@ -85,8 +86,12 @@ public final class SpringProperties {
                     }
                 }
                 break;
-            case "postgresql":
             case "pgsql":
+                // Expose the normalized value to the Spring environment so the PostgreSQL
+                // interceptors in MybatisConfig, which are conditional on
+                // datasource.dialect=pgsql, are registered even when the configured value
+                // carries surrounding whitespace or mixed case.
+                springConfig.put("datasource.dialect", "pgsql");
                 springConfig.put("spring.datasource.driver-class-name", "org.postgresql.Driver");
                 break;
             case "h2":
@@ -122,7 +127,10 @@ public final class SpringProperties {
                 springConfig.put("spring.h2.console.settings.trace", true);
                 break;
             default:
-                throw new UnsupportedOperationException("Unsupported datasource dialect: " + dialect);
+                throw new UnsupportedOperationException(
+                    "Unsupported datasource dialect: "
+                        + dialect
+                        + ", supported values are: mysql, pgsql, h2");
         }
     }
 
